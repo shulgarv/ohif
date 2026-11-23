@@ -1,0 +1,28 @@
+{
+  "name": "@zip.js/zip.js",
+  "version": "2.23.0",
+  "license": "BSD-3-Clause",
+  "dist": {
+    "shasum": "ea45d9b8c56f7d9e9dd1a266b34b153532f2757e",
+    "tarball": "https://registry.npmjs.org/@zip.js/zip.js/-/zip.js-2.23.0.tgz",
+    "fileCount": 114,
+    "integrity": "sha512-K5obAqfrO7zhycnCupM9aaoZ9kx0SA0kv7+Z2oOUsdpWquv4s/Z4zyD7AdTqxrK3pgPM+ozaUi8kdRQbCWaIrQ==",
+    "signatures": [
+      {
+        "sig": "MEQCIAwR9wZdr/JN/FBsLrAATQSB4qapKOFR1q581aHxmN3LAiBXbg4iRcrdh3l8hM1FdX/X8vMd/3SWJ/AOYJUkpQZ9YQ==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      },
+      {
+        "sig": "MEQCIHjXHQ3SyRGThu84DA7sdGLBhaV+b44O84sKoRm5QFtyAiBFvYb5vSgHfyq1BS0hPMXUSA1n7MwARDWNwsQfQwydLg==",
+        "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+      }
+    ],
+    "attestations": {
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@zip.js%2fzip.js@2.23.0",
+      "provenance": {
+        "predicateType": "https://slsa.dev/provenance/v1"
+      }
+    },
+    "unpackedSize": 8702275
+  }
+}

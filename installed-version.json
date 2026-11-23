@@ -1,0 +1,7 @@
+{
+  "version": "v3.13.12",
+  "image": "ohif/app",
+  "digest": "sha256:2710da0c2893692f43bae6a70992623065a0edd849ae20412fc862e0f2b30aa5",
+  "extracted_files": 777,
+  "restored_compressed_assets": 134
+}

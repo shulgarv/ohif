@@ -1,0 +1,25 @@
+# Сборка вьюера: восстанавливается из образа ohif/app скриптом install-viewer.py,
+# в git не хранится (226 МБ готовых бандлов). См. README.md.
+/www/
+/.image-cache/
+
+# Виртуальное окружение: python3 -m venv .venv + pip install -r requirements-conversion.txt
+/.venv/
+__pycache__/
+*.py[cod]
+
+# Сессионные архивы и состояние распаковки: локальная страховка, не исходники
+/backups/
+/zip-unpack-state.json
+/zip-unpack-state.lock
+
+# Результаты браузерных проверок на реальных исследованиях: содержат номера
+# исследований и служебные хеши, воспроизводятся локально. Код проверок — коммитим.
+/verification/*.json
+/verification/*.png
+/verification/diagnosis-*/
+
+# Медицинские данные и архивы исследований не публикуются никогда
+*.dcm
+*.DCM
+*.zip
