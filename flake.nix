@@ -49,6 +49,6 @@
         };
       });
 
-      formatter = forAllSystems (_self: _system: pkgs: pkgs.nixfmt-rfc-style);
+      formatter = forAllSystems (_self: _system: pkgs: pkgs.nixfmt);
     };
 }
