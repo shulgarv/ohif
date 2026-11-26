@@ -1,3 +1,27 @@
+// MPR builds a 3D GPU texture from the whole series. A 1024x1024x630 CT
+// volume needs more than 1 GiB and can exhaust the WebGL context on integrated
+// graphics, so keep the derived volume within a safe texture budget. Reduce
+// only the in-plane resolution: slice thickness and Z increment stay original,
+// while source files and stack views keep their full resolution.
+const LOCAL_MPR_VOLUME_TEXTURE_BUDGET = 512 * 1024 * 1024;
+function localMprVolumeDecimationFactor(imageIds, getMetadata, capabilities,
+  budget = LOCAL_MPR_VOLUME_TEXTURE_BUDGET) {
+  if (!Array.isArray(imageIds) || imageIds.length < 2) return 1;
+  const plane = getMetadata('imagePlaneModule', imageIds[0]);
+  const pixel = getMetadata('imagePixelModule', imageIds[0]);
+  const rows = plane?.rows ?? pixel?.rows;
+  const columns = plane?.columns ?? pixel?.columns;
+  const bits = pixel?.bitsAllocated ?? 16;
+  const samples = pixel?.samplesPerPixel ?? 1;
+  if (!rows || !columns) return 1;
+  // 16-bit data uses a compact norm16 texture when available; otherwise
+  // Cornerstone expands the volume to Float32 for rendering.
+  const bytesPerSample = bits > 8 && !capabilities?.norm16 ? 4 :
+    Math.max(1, Math.ceil(bits / 8));
+  const textureBytes = rows * columns * bytesPerSample * samples * imageIds.length;
+  return Math.max(1, Math.ceil(Math.sqrt(textureBytes / budget)));
+}
+
 window.config = {
   name: 'Local DICOM',
   routerBasename: '/',
@@ -40,6 +64,36 @@ window.config = {
           // creation (mouse down), updates, and restoring measurements with Undo.
           const {cornerstone, cornerstoneTools} = context.extensionManager.getModuleEntry(
             '@ohif/extension-cornerstone.utilityModule.common').exports.getCornerstoneLibraries();
+          // Keep MPR volumes within GPU memory. The built-in decimated loader
+          // changes only the derived volume; original slices remain untouched.
+          const originalVolumeLoader = cornerstone.cornerstoneStreamingImageVolumeLoader;
+          if (originalVolumeLoader && cornerstone.decimatedVolumeLoader) {
+            const decimationMarker = '#decimation=';
+            const decimatedMetadataProvider = (type, imageId) => {
+              if (typeof imageId !== 'string') return;
+              const markerIndex = imageId.indexOf(decimationMarker);
+              if (markerIndex < 0) return;
+              return cornerstone.metaData.get(type, imageId.slice(0, markerIndex));
+            };
+            cornerstone.metaData.addProvider(decimatedMetadataProvider);
+            cornerstone.volumeLoader.registerVolumeLoader('cornerstoneStreamingImageVolume',
+              (volumeId, options = {}) => {
+                const factor = localMprVolumeDecimationFactor(options.imageIds,
+                  (type, imageId) => cornerstone.metaData.get(type, imageId),
+                  cornerstone.getRenderingCapabilities?.());
+                if (factor === 1) return originalVolumeLoader(volumeId, options);
+                // In-plane decimation preserves the original Z spacing.
+                console.warn(`OHIF local: MPR volume downsampled ${factor}x in-plane; ` +
+                  'slice spacing preserved');
+                return cornerstone.decimatedVolumeLoader(volumeId,
+                  {...options, ijkDecimation: [factor, factor, 1]});
+              });
+            this._unsubscriptions.push(() => {
+              cornerstone.volumeLoader.registerVolumeLoader(
+                'cornerstoneStreamingImageVolume', originalVolumeLoader);
+              cornerstone.metaData.removeProvider(decimatedMetadataProvider);
+            });
+          }
           let singleMeasurement = null;
           let measurementMouseDown = false;
           const onMeasurementToolActivated = event => {
