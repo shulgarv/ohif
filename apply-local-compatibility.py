@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import split_volume_texture
 from viewer_ui import patch_ui_bundle
 
 ROOT = Path(__file__).resolve().parent
@@ -18,7 +19,8 @@ def apply():
     patch_sources = [Path(__file__), PATCH_DIR / 'dicom-loader.js',
                      PATCH_DIR / 'files-to-studies.js', PATCH_DIR / 'local-zip.js',
                      PATCH_DIR / 'async-un-sequence.js', ROOT / 'viewer_ui.py',
-                     PATCH_DIR / 'compact-studies.js', PATCH_DIR / 'un-numeric-length.js']
+                     PATCH_DIR / 'compact-studies.js', PATCH_DIR / 'un-numeric-length.js',
+                     ROOT / 'split_volume_texture.py']
     patch_sources.extend(sorted((PATCH_DIR / 'vendor').iterdir()))
     source_hash = hashlib.sha256(b''.join(p.read_bytes() for p in patch_sources)).hexdigest()
     record = PATCH_DIR / 'installed-patch.json'
@@ -130,6 +132,7 @@ def apply():
                             'Drag and drop your DICOM files, ZIP archives & folders here ')
     if not backup.exists():
         backup.write_bytes(gzip.compress(original, mtime=0))
+    source = split_volume_texture.patch_bundle(source)
     patched = patch_ui_bundle(source).encode('utf-8')
     zip_module = (PATCH_DIR / 'local-zip.js').read_bytes()
     (ROOT / 'www' / 'local-zip.js').write_bytes(zip_module)

@@ -1,24 +1,36 @@
-// MPR builds a 3D GPU texture from the whole series. A 1024x1024x630 CT
-// volume needs more than 1 GiB and can exhaust the WebGL context on integrated
-// graphics, so keep the derived volume within a safe texture budget. Reduce
-// only the in-plane resolution: slice thickness and Z increment stay original,
-// while source files and stack views keep their full resolution.
+// MPR builds a 3D GPU texture from the whole series. ANGLE refuses a single
+// texture allocation above 1 GiB, so a 1024x1024x629 16-bit CT volume
+// (1.23 GiB) cannot be uploaded at once. The installed viewer splits such a
+// volume into two textures along Z (see split_volume_texture.py) and keeps
+// every voxel, the in-plane resolution, slice thickness and Z increment.
+// Only when that split support is absent (an unpatched build) or when even two
+// textures are not enough, fall back to reducing the in-plane resolution.
 const LOCAL_MPR_VOLUME_TEXTURE_BUDGET = 512 * 1024 * 1024;
-function localMprVolumeDecimationFactor(imageIds, getMetadata, capabilities,
-  budget = LOCAL_MPR_VOLUME_TEXTURE_BUDGET) {
-  if (!Array.isArray(imageIds) || imageIds.length < 2) return 1;
+function localMprVolumeTextureBytes(imageIds, getMetadata, capabilities) {
+  if (!Array.isArray(imageIds) || imageIds.length < 2) return 0;
   const plane = getMetadata('imagePlaneModule', imageIds[0]);
   const pixel = getMetadata('imagePixelModule', imageIds[0]);
   const rows = plane?.rows ?? pixel?.rows;
   const columns = plane?.columns ?? pixel?.columns;
   const bits = pixel?.bitsAllocated ?? 16;
   const samples = pixel?.samplesPerPixel ?? 1;
-  if (!rows || !columns) return 1;
+  if (!rows || !columns) return 0;
   // 16-bit data uses a compact norm16 texture when available; otherwise
   // Cornerstone expands the volume to Float32 for rendering.
   const bytesPerSample = bits > 8 && !capabilities?.norm16 ? 4 :
     Math.max(1, Math.ceil(bits / 8));
-  const textureBytes = rows * columns * bytesPerSample * samples * imageIds.length;
+  return rows * columns * bytesPerSample * samples * imageIds.length;
+}
+function localMprVolumeDecimationFactor(imageIds, getMetadata, capabilities,
+  budget = LOCAL_MPR_VOLUME_TEXTURE_BUDGET) {
+  const textureBytes = localMprVolumeTextureBytes(imageIds, getMetadata, capabilities);
+  if (!textureBytes) return 1;
+  // The GPU upload is split into two textures by the installed viewer patch.
+  // Keep the original resolution and the original geometry whenever both
+  // halves fit ANGLE's per-texture limit.
+  const split = typeof window === 'undefined' ? null :
+    window.__ohifLocalVolumeTextureSplit;
+  if (split?.enabled && textureBytes <= 2 * split.limitBytes) return 1;
   return Math.max(1, Math.ceil(Math.sqrt(textureBytes / budget)));
 }
 

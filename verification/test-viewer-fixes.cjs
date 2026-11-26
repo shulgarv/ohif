@@ -6,9 +6,12 @@ const path = require('node:path');
 const fixture = process.argv[2] || '/tmp/ohif-import-fixtures/two-series';
 
 (async () => {
-  const browser = await chromium.launch({executablePath: '/usr/bin/chromium', args: [
-    '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
-  ]});
+  const browser = await chromium.launch({
+    executablePath: process.env.OHIF_CHROMIUM_PATH || '/usr/bin/chromium',
+    args: process.env.OHIF_BROWSER_GL === '1'
+      ? ['--disable-dev-shm-usage', '--use-gl=angle', '--use-angle=gl']
+      : ['--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  });
   try {
     const page = await browser.newPage({viewport: {width: 1400, height: 1000}});
     const errors = [], external = [], checks = [];

@@ -43,6 +43,20 @@ for (const test of cases) {
   assert.equal(actual, test.expected, `${test.name}: expected ${test.expected}, got ${actual}`);
   assert.deepEqual(input, test.imageIds, `${test.name}: image ids changed`);
 }
+// With the split-volume patch installed the full resolution is kept whenever
+// two textures are enough; the decimation stays as a fallback only.
+const splitContext = {window: {__ohifLocalVolumeTextureSplit: {enabled: true, limitBytes: 900 * 1024 * 1024}}};
+vm.createContext(splitContext);
+vm.runInContext(source, splitContext);
+assert.equal(splitContext.localMprVolumeDecimationFactor(ids(629), get, {norm16: true}), 1,
+  'split volume upload must keep the full in-plane resolution');
+// Without norm16 Cornerstone uses Float32 (2.46 GiB): two textures are not
+// enough, so the in-plane fallback still applies.
+assert.equal(splitContext.localMprVolumeDecimationFactor(ids(629), get, {norm16: false}), 3,
+  'volumes larger than two textures must fall back to decimation');
+// 1024x1024x2048 Float32 is 8 GiB: far more than two textures can hold.
+assert.equal(splitContext.localMprVolumeDecimationFactor(ids(2048), get, {norm16: false}), 4,
+  'volumes larger than two textures still fall back to decimation');
 assert.match(source, /registerVolumeLoader\('cornerstoneStreamingImageVolume'/);
 assert.match(source, /decimatedVolumeLoader\(volumeId/);
 assert.match(source, /ijkDecimation: \[factor, factor, 1\]/);
