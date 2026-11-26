@@ -3,7 +3,7 @@ const {chromium} = require(process.env.OHIF_PLAYWRIGHT_PATH || 'playwright');
 const assert = require('node:assert/strict');
 const fixtureRoot = process.argv[2] || '/tmp/ohif-import-fixtures';
 (async () => {
-  const browser = await chromium.launch({executablePath:'/usr/bin/chromium', args:['--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+  const browser = await chromium.launch({executablePath: process.env.OHIF_CHROMIUM_PATH || '/usr/bin/chromium', args:['--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   try {
     const page = await browser.newPage();
     const errors = [];

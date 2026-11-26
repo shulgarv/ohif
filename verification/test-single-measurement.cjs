@@ -6,7 +6,7 @@ const path = require('node:path');
 const fixture = process.argv[2] || '/tmp/ohif-import-fixtures/two-series';
 
 (async () => {
-  const browser = await chromium.launch({executablePath: '/usr/bin/chromium', args: [
+  const browser = await chromium.launch({executablePath: process.env.OHIF_CHROMIUM_PATH || '/usr/bin/chromium', args: [
     '--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
   ]});
   try {

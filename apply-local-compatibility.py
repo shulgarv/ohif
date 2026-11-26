@@ -20,6 +20,7 @@ def apply():
                      PATCH_DIR / 'files-to-studies.js', PATCH_DIR / 'local-zip.js',
                      PATCH_DIR / 'async-un-sequence.js', ROOT / 'viewer_ui.py',
                      PATCH_DIR / 'compact-studies.js', PATCH_DIR / 'un-numeric-length.js',
+                     PATCH_DIR / 'async-group-length.js',
                      ROOT / 'split_volume_texture.py']
     patch_sources.extend(sorted((PATCH_DIR / 'vendor').iterdir()))
     source_hash = hashlib.sha256(b''.join(p.read_bytes() for p in patch_sources)).hexdigest()
@@ -102,6 +103,17 @@ def apply():
               + (PATCH_DIR / 'async-un-sequence.js').read_text().rstrip()
               + reader[sequence_end:])
     source = source[:reader_start] + reader + source[reader_end:]
+    # Some exporters write a command set (group 0) at the start of the dataset.
+    # Its group length is not in the dictionary, so use the parsed element
+    # length; otherwise the async stream offset becomes NaN and every element
+    # of that file silently disappears.
+    group_old = '''              // Group length
+              stream.increment(tagObj.length);
+              return _context5.abrupt("continue", 1);'''
+    if source.count(group_old) != 1:
+        raise RuntimeError('Unexpected async group length skip implementation')
+    source = source.replace(group_old,
+                            (PATCH_DIR / 'async-group-length.js').read_text().rstrip('\n'), 1)
     start = source.index('  getDataset(image, imageId) {', source.index('const DICOMFileLoader ='))
     end = source.index('\n}();', start)
     source = source[:start] + (PATCH_DIR / 'dicom-loader.js').read_text().rstrip() + source[end:]

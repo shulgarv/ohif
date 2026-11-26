@@ -18,7 +18,7 @@ const fingerprints = root => {
 };
 (async () => {
   const before = fingerprints(folder);
-  const browser = await chromium.launch({executablePath:'/usr/bin/chromium', args:['--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+  const browser = await chromium.launch({executablePath: process.env.OHIF_CHROMIUM_PATH || '/usr/bin/chromium', args:['--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
   try {
     const page = await browser.newPage({viewport: {width: 1400, height: 1000}});
     const errors = [], dialogs = [], external = [];

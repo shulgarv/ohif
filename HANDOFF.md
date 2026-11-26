@@ -1,5 +1,51 @@
 # OHIF: состояние на 26 ноября 2026
 
+## Импорт 7207928 — command group в начале датасета
+
+При открытии `Downloads/dicoms_7207928.zip` появлялось
+`loadImageFromNaturalizedMetadata: no pixel data in NATURALIZED for imageId
+dicomfile:456`. Ошибка воспроизведена на одном файле архива локально и в
+браузере; исходный архив не изменялся.
+
+Причина: экспортёр записал DICOM command set (группа `0000`) перед датасетом.
+Асинхронный читатель dcmjs при пропуске элементов длины группы использовал
+длину из словаря, а у элементов группы 0 с переменной длиной её нет:
+`stream.increment(undefined)` делал смещение потока `NaN`, цикл чтения молча
+завершался, naturalize оставался пустым — и пикселей нет. Синхронный читатель
+dcmjs и pydicom такие файлы читают (pydicom предупреждает про ожидаемый
+implicit VR). Ошибка не связана с правкой полноразмерного MPR: она
+воспроизводится на чистой сборке 3.13.12.
+
+Исправление — `compatibility/async-group-length.js` (применяется
+`apply-local-compatibility.py`, SHA-256 закреплён, повторный запуск
+идемпотентен): пропускается фактическая длина элемента; если она неизвестна
+или неопределённая, выбрасывается понятная ошибка, и файл учитывается как
+неудачный вместо молчаливого исчезновения элементов. Исходные файлы,
+пиксели и метаданные не переписываются.
+
+Проверки:
+
+- `verification/verify-archive-pixels.cjs` по всему архиву: 3750 из 3750
+  файлов дают пиксели, байты совпадают с независимым синхронным читателем,
+  SHA-256 архива не изменился, предупреждений нет. Отчёт —
+  `verification/pixels-7207928.json`.
+- `verification/test-command-group.cjs` на искусственном файле из
+  `verification/make-command-group-fixture.py` — PASS; на чистой сборке тот же
+  файл без пикселей (регрессия воспроизводится).
+- Браузерный импорт искусственного файла (`test-local-import.cjs`) —
+  imported=1, failed=0, отрисовано; ошибок JS и внешних запросов нет.
+
+```bash
+python3 apply-local-compatibility.py
+.venv/bin/python verification/make-command-group-fixture.py /tmp/ohif-command-group
+node verification/test-command-group.cjs /tmp/ohif-command-group
+node verification/verify-archive-pixels.cjs ~/Downloads/dicoms_7207928.zip \
+  verification/pixels-7207928.json
+```
+
+Применение у пользователя: Ctrl+Shift+R и повторно выбрать архив; перезапуск
+службы не нужен (разбор DICOM выполняется в браузере).
+
 ## Полноразмерный MPR без прореживания — 26 ноября
 
 Задача из раздела «Задача на будущее» решена: MPR на исследовании 7201941
